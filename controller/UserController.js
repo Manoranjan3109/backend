@@ -1,73 +1,86 @@
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
 const User = require("../Models/User");
+const Booking = require("../Models/booking"); // ✅ Make sure Booking model is imported
 
-// 🔐 Use environment variable for JWT secret
-const JWT_SECRET = process.env.JWT_SECRET || "default_jwt_secret";
+// Sign JWT
+const signToken = (user) =>
+  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
-// 📌 REGISTER
-exports.register = async (req, res) => {
+// Register controller
+const register = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+    const { username, email, password, role } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "username, email, password are required" });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "User already exists" });
 
-    // Create and save user
-    const newUser = new User({ username, email, password: hashedPassword });
-    await newUser.save();
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      username,
+      email,
+      password: hash,
+      role: role || "user",
+    });
 
-    res.status(201).json({ message: "User registered successfully" });
+    const token = signToken(user);
 
-  } catch (error) {
-    res.status(500).json({ message: "Registration failed", error: error.message });
+    res.status(201).json({
+      message: "Registered successfully",
+      token,
+      user: { id: user._id, username: user.username, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// 🔐 LOGIN
-exports.login = async (req, res) => {
+// Login controller
+const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "email and password are required" });
+    }
 
-    // Find user
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
-    // Compare password
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(401).json({ message: "Invalid email or password" });
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
-      expiresIn: "1h",
+    const token = signToken(user);
+
+    res.status(200).json({
+      token,
+      user: { id: user._id, username: user.username, email: user.email, role: user.role },
     });
-
-    // Send token in cookie and response body
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: false, // Set true in production (HTTPS)
-        sameSite: "Lax",
-        maxAge: 3600000, // 1 hour
-      })
-      .status(200)
-      .json({
-        message: "Login successful",
-        token, // ✅ Token now clearly returned
-        user: { id: user._id, email: user.email, username: user.username },
-      });
-
-  } catch (error) {
-    res.status(500).json({ message: "Login failed", error: error.message });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ message: "Server error" });
   }
+};
+
+// ✅ Get current user's bookings
+const getUserBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ user: req.user._id }).populate("hotel");
+    res.json(bookings);
+  } catch (err) {
+    console.error("FETCH USER BOOKINGS ERROR:", err);
+    res.status(500).json({ message: "Server error while fetching bookings" });
+  }
+};
+
+// ✅ Export all controllers
+module.exports = {
+  register,
+  login,
+  getUserBookings,
 };
