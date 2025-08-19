@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../Models/User");
-const Booking = require("../Models/booking"); // ✅ Make sure Booking model is imported
+const User = require("../models/User");
+const Booking = require("../models/booking"); // ✅ Make sure Booking model is imported
 
 // Sign JWT
 const signToken = (user) =>
