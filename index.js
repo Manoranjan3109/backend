@@ -8,10 +8,10 @@ const path = require("path");
 
 dotenv.config();
 
-const userRouter  = require("./Routers/UserRouter");
-const adminRouter = require("./Routers/AdminRouter");
-const hotelRouter = require("./Routers/HotelRouter");
-const bookingRoutes = require('./Routers/booking');
+const userRouter  = require("./routers/UserRouter");
+const adminRouter = require("./routers/AdminRouter");
+const hotelRouter = require("./routers/HotelRouter");
+const bookingRoutes = require('./routers/booking');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;

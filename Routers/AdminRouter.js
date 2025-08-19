@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-const { protect, adminOnly } = require("../Middleware/AuthMiddleware");
+const { protect, adminOnly } = require("../middleware/AuthMiddleware");
 const {
   createHotel,
   listHotels,
